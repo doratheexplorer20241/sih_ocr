@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import faiss
 import json
+import os
 from sentence_transformers import SentenceTransformer
 from langchain_groq import ChatGroq
 from groq import Groq
