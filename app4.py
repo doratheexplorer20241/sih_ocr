@@ -1,8 +1,4 @@
 import streamlit as st
-import speech_recognition as sr
-from gtts import gTTS
-import tempfile
-import os
 import logging
 import re
 import pickle
@@ -142,7 +138,6 @@ class EnhancedLegalCaseAnalyzer:
             logger.error(f"Document analysis error: {e}")
             return {'error': str(e)}
 
-    # [Rest of the methods remain the same as in the previous version]
     def _load_or_create_embeddings(self) -> Tuple[faiss.Index, np.ndarray]:
         """Load or create embeddings."""
         try:
@@ -240,39 +235,6 @@ class EnhancedLegalCaseAnalyzer:
             logger.error(f"Search error: {e}")
             return []
 
-def init_speech_recognizer():
-    """Initialize speech recognition."""
-    return sr.Recognizer()
-
-def record_audio() -> Optional[str]:
-    """Record audio and convert to text."""
-    recognizer = init_speech_recognizer()
-    
-    with sr.Microphone() as source:
-        st.write("🎤 Listening... Speak your query")
-        try:
-            audio = recognizer.listen(source, timeout=5)
-            st.write("Processing speech...")
-            return recognizer.recognize_google(audio)
-        except sr.WaitTimeoutError:
-            st.error("No speech detected")
-        except sr.UnknownValueError:
-            st.error("Could not understand audio")
-        except sr.RequestError:
-            st.error("Speech recognition service error")
-    return None
-
-def text_to_speech(text: str) -> None:
-    """Convert text to speech."""
-    try:
-        tts = gTTS(text=text, lang='en')
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
-            tts.save(fp.name)
-            st.audio(fp.name)
-        os.unlink(fp.name)
-    except Exception as e:
-        st.error(f"Text-to-speech error: {e}")
-
 def display_analysis_results(result: dict):
     """Display analysis results."""
     if 'error' in result:
@@ -288,13 +250,8 @@ def display_analysis_results(result: dict):
 
         st.subheader("💡 Recommendation")
         st.write(result['recommendation'])
-        
-        if st.session_state.get('enable_voice', False):
-            text_to_speech(result['recommendation'])
     else:
         st.write(result['response'])
-        if st.session_state.get('enable_voice', False):
-            text_to_speech(result['response'])
 
 def main():
     st.set_page_config(
@@ -315,15 +272,10 @@ def main():
             st.error(f"Initialization error: {e}")
             return
 
-    # Sidebar for settings
-    with st.sidebar:
-        st.header("Settings")
-        st.checkbox("Enable Voice Features", key="enable_voice")
-
     # Main interface
     input_type = st.radio(
         "Choose Input Method:",
-        ["Text", "Voice", "Document Image"],
+        ["Text", "Document Image"],
         horizontal=True
     )
 
@@ -333,19 +285,6 @@ def main():
             with st.spinner("Analyzing..."):
                 result = st.session_state.analyzer.analyze_query(query)
                 display_analysis_results(result)
-
-    elif input_type == "Voice":
-        if not st.session_state.get('enable_voice', False):
-            st.warning("Please enable voice features in the sidebar.")
-            return
-            
-        if st.button("Start Recording"):
-            query = record_audio()
-            if query:
-                st.info(f"Query: {query}")
-                with st.spinner("Analyzing..."):
-                    result = st.session_state.analyzer.analyze_query(query)
-                    display_analysis_results(result)
 
     else:  # Document Image
         uploaded_file = st.file_uploader(
